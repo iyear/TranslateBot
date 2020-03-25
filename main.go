@@ -46,17 +46,17 @@ func main() {
 	b.Handle("/start", func(m *tb.Message) {
 		b.Send(m.Sender, "欢迎使用Translatebot!")
 	})
-	btn1 := tb.InlineButton{
+	var btn1 = tb.InlineButton{
 		Unique: "ZH_CN2EN",
 		Text:   "中文->英文",
 	}
-	btn2 := tb.InlineButton{
+	var btn2 = tb.InlineButton{
 		Unique: "ZH_CN2JA",
 		Text:   "中文->日文",
 	}
-	inlinekeys := [][]tb.InlineButton{
-		[]tb.InlineButton{btn1},
-		[]tb.InlineButton{btn2},
+	var inlinekeys = [][]tb.InlineButton{
+		{btn1},
+		{btn2},
 	}
 	b.Handle(&btn1, func(c *tb.Callback) {
 		b.Respond(c)
@@ -84,12 +84,12 @@ func translate(s, trtype string) string {
 		return ""
 	}
 	defer resp.Body.Close()
-	zh_CN, err := ioutil.ReadAll(resp.Body)
+	resptxt, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("ERROR!")
 		return ""
 	}
-	value := gjson.Get(string(zh_CN), "translateResult.0.0.tgt")
+	value := gjson.Get(string(resptxt), "translateResult.0.0.tgt")
 	return value.String()
 }
 func GetBetweenStr(str, start, end string) string {
