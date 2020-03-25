@@ -13,11 +13,23 @@ import (
 )
 
 func main() {
-	os.Setenv("HTTPS_PROXY", "socks5://127.0.0.1:1080")
-	os.Setenv("HTTP_PROXY", "socks5://127.0.0.1:1080")
 	botcfg, err := ioutil.ReadFile("./bot.cfg")
 	if err != nil {
-		fmt.Println("读取token失败:", err)
+		fmt.Println("读取配置失败:", err)
+	}
+
+	if gjson.Get(string(botcfg), "proxy.enable").String() == "yes" {
+		err1 := os.Setenv("HTTPS_PROXY", gjson.Get(string(botcfg), "proxy.protocol").String()+
+			"://"+gjson.Get(string(botcfg), "proxy.ip").String()+
+			":"+gjson.Get(string(botcfg), "proxy.port").String())
+		err2 := os.Setenv("HTTP_PROXY", gjson.Get(string(botcfg), "proxy.protocol").String()+
+			"://"+gjson.Get(string(botcfg), "proxy.ip").String()+
+			":"+gjson.Get(string(botcfg), "proxy.port").String())
+		if err1 != nil || err2 != nil {
+			fmt.Println("代理设置失败")
+		} else {
+			fmt.Println("代理设置成功")
+		}
 	}
 	token := gjson.Get(string(botcfg), "token")
 	if token.String() != "" {
