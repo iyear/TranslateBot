@@ -2,43 +2,48 @@ package main
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"github.com/tidwall/gjson"
+	"golang.org/x/net/proxy"
 	tb "gopkg.in/tucnak/telebot.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
 
 func main() {
-	botcfg, err := ioutil.ReadFile("./bot.cfg")
+	var (
+		BotToken string
+		Socks5   string
+	)
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
 	if err != nil {
-		fmt.Println("读取配置失败:", err)
+		fmt.Println("Read Config ERROR")
+	}
+	BotToken = viper.GetString("bot_token")
+	fmt.Println("Token:" + BotToken)
+	Socks5 = viper.GetString("socks5")
+	botsettings := tb.Settings{
+		Token:  BotToken,
+		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
+	}
+	if Socks5 != "" {
+		fmt.Println("Proxy:" + Socks5)
+		dialer, err := proxy.SOCKS5("tcp", Socks5, nil, proxy.Direct)
+		if err != nil {
+			log.Fatal("Error creating dialer, aborting.")
+		}
+		httpTransport := &http.Transport{}
+		httpClient := &http.Client{Transport: httpTransport}
+		httpTransport.Dial = dialer.Dial
+		botsettings.Client = httpClient
 	}
 
-	if gjson.Get(string(botcfg), "proxy.enable").String() == "yes" {
-		err1 := os.Setenv("HTTPS_PROXY", gjson.Get(string(botcfg), "proxy.protocol").String()+
-			"://"+gjson.Get(string(botcfg), "proxy.ip").String()+
-			":"+gjson.Get(string(botcfg), "proxy.port").String())
-		err2 := os.Setenv("HTTP_PROXY", gjson.Get(string(botcfg), "proxy.protocol").String()+
-			"://"+gjson.Get(string(botcfg), "proxy.ip").String()+
-			":"+gjson.Get(string(botcfg), "proxy.port").String())
-		if err1 != nil || err2 != nil {
-			fmt.Println("代理设置失败")
-		} else {
-			fmt.Println("代理设置成功")
-		}
-	}
-	token := gjson.Get(string(botcfg), "token")
-	if token.String() != "" {
-		fmt.Println("token:" + token.String())
-	}
-	b, err := tb.NewBot(tb.Settings{
-		Token:  token.String(),
-		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
-	})
+	b, err := tb.NewBot(botsettings)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -54,10 +59,7 @@ func main() {
 		Unique: "ZH_CN2JA",
 		Text:   "中文->日文",
 	}
-	var inlinekeys = [][]tb.InlineButton{
-		{btn1},
-		{btn2},
-	}
+	var inlinekeys = [][]tb.InlineButton{{btn1}, {btn2}}
 	b.Handle(&btn1, func(c *tb.Callback) {
 		b.Respond(c)
 		fmt.Println(btn1.Unique)
